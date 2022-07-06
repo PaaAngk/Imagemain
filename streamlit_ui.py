@@ -2,7 +2,7 @@
 # import libraries
 from PIL import Image
 from torchvision import models, transforms
-import torch
+from torch import nn, sort, unsqueeze
 import streamlit as st
 import cv2 
 
@@ -31,7 +31,7 @@ def predict(image):
 
     # load the image, pre-process it, and make predictions
     img = Image.open(image)
-    batch_t = torch.unsqueeze(transform(img), 0)
+    batch_t = unsqueeze(transform(img), 0)
     resnet.eval()
     out = resnet(batch_t)
 
@@ -39,8 +39,8 @@ def predict(image):
         classes = [line.strip() for line in f.readlines()]
 
     # return the top 5 predictions ranked by highest probabilities
-    prob = torch.nn.functional.softmax(out, dim = 1)[0] * 100
-    _, indices = torch.sort(out, descending = True)
+    prob = nn.functional.softmax(out, dim = 1)[0] * 100
+    _, indices = sort(out, descending = True)
     return [(classes[idx], prob[idx].item()) for idx in indices[0][:5]]
 
     
