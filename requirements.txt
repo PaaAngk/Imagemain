@@ -5,7 +5,7 @@ Pillow
 opencv-python-headless
 opendatasets
 pyyaml
-git+https://github.com/facebookresearch/detectron2.git
+detectron2==0.3 -f https://dl.fbaipublicfiles.com/detectron2/wheels/cu101/torch1.5/index.html
 git+https://github.com/qubvel/segmentation_models
 pandas
 numpy
