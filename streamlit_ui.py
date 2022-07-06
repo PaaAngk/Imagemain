@@ -4,7 +4,7 @@ from PIL import Image
 from torchvision import models, transforms
 import torch
 import streamlit as st
-import cv2 
+import cv2
 
 def predict(image):
     """Return top 5 predictions ranked by highest probability.
