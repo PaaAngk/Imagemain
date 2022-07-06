@@ -2,7 +2,7 @@
 # import libraries
 from PIL import Image
 from torchvision import models, transforms
-from torch import nn, sort, unsqueeze
+import torch 
 import streamlit as st
 import cv2 
 
