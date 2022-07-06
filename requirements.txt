@@ -3,6 +3,13 @@ torch
 torchvision
 Pillow
 opencv-python-headless
+opendatasets
+pyyaml
+detectron2
+git+https://github.com/qubvel/segmentation_models
+pandas
+numpy
+deskew
 # ==1.10.0
 # ==1.12.0
 # ==0.13.0

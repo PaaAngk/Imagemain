@@ -5,6 +5,45 @@ from torchvision import models, transforms
 import torch
 import streamlit as st
 import cv2
+import re, os, json, sys
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+import matplotlib.pyplot as plt
+from PIL import Image, ImageOps
+import random
+import decimal
+import shutil
+import opendatasets as od
+import keras
+import math
+import scipy
+
+#Image deskew libraries.
+from skimage import io
+from skimage.transform import rotate
+from skimage.color import rgb2gray
+try:
+    from deskew import determine_skew
+except:
+    from deskew import determine_skew
+from typing import Tuple, Union
+
+import segmentation_models as sm
+import detectron2
+from detectron2.utils.logger import setup_logger
+setup_logger()
+
+# import some common detectron2 utilities
+from detectron2 import model_zoo
+from detectron2.engine import DefaultPredictor
+from detectron2.config import get_cfg
+from detectron2.utils.visualizer import Visualizer
+from detectron2.data import MetadataCatalog
+from detectron2.data.catalog import DatasetCatalog
+
+import warnings
+warnings.filterwarnings("ignore")
 
 def predict(image):
     """Return top 5 predictions ranked by highest probability.
