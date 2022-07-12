@@ -1,6 +1,7 @@
 """Create an Image Classification Web App using PyTorch and Streamlit."""
 # import libraries
 from PIL import Image
+import PIL
 from torchvision import models, transforms
 import torch
 import streamlit as st
@@ -18,7 +19,8 @@ import opendatasets as od
 import keras
 import math
 import scipy
-
+import skimage
+import exif
 #Image deskew libraries.
 from skimage import io
 from skimage.transform import rotate
@@ -41,6 +43,7 @@ from detectron2.config import get_cfg
 from detectron2.utils.visualizer import Visualizer
 from detectron2.data import MetadataCatalog
 from detectron2.data.catalog import DatasetCatalog
+from scipy.ndimage import interpolation as inter
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -57,8 +60,11 @@ def set_png_as_page_bg(png_file):
     page_bg_img = '''
     <style>
     .stApp {
-    background-image: url("data:image/png;base64,%s");
-    background-size: cover;
+        background-image:
+            linear-gradient(135deg, rgb(201, 177, 251, 0.7), rgb(255, 248, 193, 0.7)), 
+            url("data:image/png;base64,%s");
+        background-size: cover;
+        color: white;
     }
     </style>
     ''' % bin_str
@@ -68,9 +74,36 @@ def set_png_as_page_bg(png_file):
 set_png_as_page_bg('cat.jpg')
 
 
+# import firebase_admin
+# from firebase_admin import credentials
+# from firebase_admin import storage
+
+# cred = credentials.Certificate('./notional-arc-355706-firebase-adminsdk-wsbrr-30edff4cf4.json')
+# firebase_admin.initialize_app(cred)
+
+# bucket = storage.bucket('gs://notional-arc-355706.appspot.com')
+
+# import pyrebase
+
+# config = {
+#     "apiKey": "AIzaSyDAHWXBKTb-yS9I4Kx4nk11FhAmM5a04Mc",
+#     "authDomain": "notional-arc-355706.firebaseapp.com",
+#     "projectId": "notional-arc-355706",
+#     "databaseURL": "notional-arc-355706.appspot.com",
+#     "storageBucket": "https://notional-arc-355706.appspot.com",
+#     "messagingSenderId": "204353569112",
+#     "appId": "1:204353569112:web:a5d05ddfd037ac1b87e52d",
+#     "measurementId": "G-WGM58XVSZX"
+# }
+
+# firebase = pyrebase.initialize_app(config)
+# storage = firebase.storage()
+# storage.child("./test12.jpg").download("test.jpg")
+# storage.child("images")
+
 
 segmentation_model_file = './final_segmentation_model'
-faster_rcnn_path = '../drive/MyDrive/model_final.pth'
+faster_rcnn_path = './model_final.pth'
 
 
 #Function to resize image.
@@ -89,7 +122,7 @@ def crop_for_seg(img, bg, mask):
     bg - The background on which to cast the image.
     mask - The binary mask generated from the segmentation model.
     '''
-    #mask = mask.astype('uint8')
+    mask = mask.astype('uint8')
     fg = cv2.bitwise_or(img, img, mask=mask) 
     fg_back_inv = cv2.bitwise_or(bg, bg, mask=cv2.bitwise_not(mask))
     New_image = cv2.bitwise_or(fg, fg_back_inv)
@@ -153,14 +186,58 @@ def prep_for_ocr(img):
     cv2.imwrite(output_name, img)
     return output_name
 
+#Converting  mask to rectangle
+def rectangle_mask(mask):
+    first_el = [len(mask),len(mask)]
+    last_el = [0,0]
+    for k in range(0, len(mask)-1):
+        line = mask[k]
+        for j in range(0, len(line)):
+            elem = line[j]
+            if elem != 0:
+                if k<first_el[0] and j<first_el[1]:
+                    first_el = [k-5,j-5]
+                if k>last_el[0] or j>last_el[1]:
+                    last_el = [k,j]
+    print("first_el ", first_el, "last_el ", last_el)
+    for k in range(0, len(mask)-1):
+        line = mask[k]
+        for j in range(0, len(line)):
+            elem = line[j]
+            if k>=first_el[0] and j>=first_el[1] and k<last_el[0] and j<last_el[1]:
+                mask[k][j] = 1
+    return mask
+
+#Converting  mask to rectangle
+def rectangle_mask_for_rgb(mask):
+    first_el = [len(mask),len(mask)]
+    last_el = [0,0]
+    for k in range(0, len(mask)-1):
+        line = mask[k]
+        for j in range(0, len(line)):
+            elem = line[j]
+            if np.sum(elem) != 0:
+                if k<first_el[0] or j<first_el[1]:
+                    first_el = [k,j]
+                if k>last_el[0] or j>last_el[1]:
+                    last_el = [k,j]
+
+    for k in range(0, len(mask)-1):
+        line = mask[k]
+        for j in range(0, len(line)):
+            elem = line[j]
+            if k>=first_el[0] and j>=first_el[1] and k<last_el[0] and j<last_el[1]:
+                if np.sum(elem) == 0:
+                    mask[k][j] = [255,255,255]
+                    
+    return mask
+
 #Segment input image.
 def segment_input_img(input_img):
-
     #Convert image from PIL format to opencv
-    pil_image = Image.open(input_img).convert('RGB') 
-    open_cv_image = np.array(pil_image) 
-    img = open_cv_image[:, :, ::-1].copy() 
-    
+    open_cv_image = np.array(input_img) 
+    img = open_cv_image[:, :, :].copy() 
+
     #Resize image.
     img_small = prod_resize_input(img)
     
@@ -175,58 +252,132 @@ def segment_input_img(input_img):
     preprocess_input = sm.get_preprocessing(BACKBONE)
     img_small = preprocess_input(img_small)
     img_small = img_small.reshape(-1, 224, 224, 3).astype('uint8')
+    #we = tf.train.Checkpoint.restore(segmentation_model_file).expect_partial()
     model = tf.keras.models.load_model(segmentation_model_file, custom_objects={'binary_crossentropy_plus_jaccard_loss': sm.losses.bce_jaccard_loss, 'iou_score' : sm.metrics.iou_score})
     mask = model.predict(img_small)
-    
     #Change type to uint8 and fill in holes.
     mask = mask.astype('uint8')
     mask = scipy.ndimage.morphology.binary_fill_holes(mask[0, :, :, 0]).astype('uint8')
-    
+    #print("Mask: ")
+    #mask
+    #mask = rectangle_mask(mask)
     #Resize mask to equal input image size.
     mask = cv2.resize(mask, dsize=dim, interpolation=cv2.INTER_AREA)
-   
     # Taking a matrix of size 5 as the kernel
-    kernel = np.ones((10,10), np.uint8)
+    kernel = np.ones((20,20), np.uint8)
     
     mask = cv2.dilate(mask, kernel, iterations=3)
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN,cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15)))
-    
+    #mask
+    #st.image(mask, caption = 'after .')
+    #mask = rectangle_mask(mask)
+    #st.image(mask, caption = 'before.')
     #Create background array.
     bg = np.zeros_like(img, 'uint8')
-    
+
     #Get new cropped image and make RGB.
     New_image = crop_for_seg(img, bg, mask)
     New_image = cv2.cvtColor(New_image, cv2.COLOR_BGR2RGB)
-
+    #st.image(New_image, caption = 'New_image.')
     #Extract meter portion.
     extracted = extract_meter(New_image)
-    
+
     grayscale = cv2.cvtColor(extracted, cv2.COLOR_BGR2GRAY)
     angle = determine_skew(grayscale)
-    
+
     if angle == None:
         angle = 1
     
-    rotated = rotate(extracted, angle, (0, 0, 0))
-    
+    st.image(extracted, caption = 'pre rotated.' )
+    #rotated = rotate(extracted, angle, (255, 255, 255))
+    rotated = rotated1(extracted, angle, (0, 0, 0))
+
+    #rotated = pre_rotation(extracted)
+    st.image(rotated, caption = 'rotated.')
+
+    # rotated = rectangle_mask_for_rgb(rotated)
+    # st.image(rotated, caption = 'rectangle_mask.')
+
     return rotated
+
+def pre_rotation(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+    # Compute rotated bounding box
+    coords = np.column_stack(np.where(thresh > 0))
+    angle = cv2.minAreaRect(coords)[-1]
+    print("pre_rotation angle ",angle )
+    if angle < -45:
+        angle = -(90 + angle)
+    else:
+        angle = -angle
+    return angle
+
+
+def rotated1(image: np.ndarray, angle: float, background: Union[int, Tuple[int, int, int]]) -> np.ndarray:
+    old_height, old_width = image.shape[:2]
+    print("old_width", old_width)
+    print("old_height", old_height)
+    print("old_angle", angle)
+    print("correct_skew(image)", correct_skew(image))
+    if old_width<old_height:
+        print("shape")
+        print(rotate(image, 10, (0, 0, 0)).shape[:2])
+        angle = pre_rotation(image)
+        #cur_width = old_width
+        #if rotate(image, 5, (0, 0, 0)).shape[:2][0] >  rotate(image, -5, (0, 0, 0)).shape[:2][0]:
+        
+    else:
+        angle_hist = correct_skew(image)
+        if abs(angle_hist) < abs(angle):
+            angle = angle_hist
+    print("!!!!!!!new angle", angle)
+    angle_radian = math.radians(angle)
+    width = abs(np.sin(angle_radian) * old_width) + abs(np.cos(angle_radian) * old_height)
+    height = abs(np.sin(angle_radian) * old_height) + abs(np.cos(angle_radian) * old_width)
+    
+    image_center = tuple(np.array(image.shape[1::-1]) / 2)
+    rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
+    rot_mat[1, 2] += (width - old_height) / 2
+    rot_mat[0, 2] += (height - old_width) / 2
+    return cv2.warpAffine(image, rot_mat, (int(round(height)), int(round(width))), borderValue=background)
+
+def correct_skew(image, delta=1, limit=30):
+    def determine_score(arr, angle):
+        data = inter.rotate(arr, angle, reshape=False, order=0)
+        histogram = np.sum(data, axis=1, dtype=float)
+        score = np.sum((histogram[1:] - histogram[:-1]) ** 2, dtype=float)
+        return histogram, score
+
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1] 
+
+    scores = []
+    angles = np.arange(-limit, limit + delta, delta)
+    for angle in angles:
+        histogram, score = determine_score(thresh, angle)
+        scores.append(score)
+
+    best_angle = angles[scores.index(max(scores))]
+
+    return best_angle
 
 def get_reading(file_image):
     '''
     This is the main function for the pipeline. 
     It takes an input image path as its only argument.
-    It then carries out all the necessary steps to extract a meter reading.
+    It then car3
+    ries out all the necessary steps to extract a meter reading.
     The output is the reading.
-    
-    NOTE: Due to having to load and generate predictions from two models, 
-    this script may take a while to run.
     '''
     #Segment image.
     segmented = segment_input_img(file_image)
     
     #Prep image and save path.
     prepped_path = prep_for_ocr(segmented)
-        
+    
+    st.image(prepped_path, caption = 'prepped_path.', use_column_width = True)
+    
     #Class labels.
     labels = ['number', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
     
@@ -236,8 +387,8 @@ def get_reading(file_image):
     #Configure model parameters.
     cfg = get_cfg()
     cfg.merge_from_file(model_zoo.get_config_file("COCO-Detection/faster_rcnn_X_101_32x8d_FPN_3x.yaml"))
-    cfg.MODEL.WEIGHTS = '../drive/MyDrive/model_final.pth'
-    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.6
+    cfg.MODEL.WEIGHTS = './model_final.pth'
+    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.1
     cfg.MODEL.DEVICE='cpu'
     cfg.MODEL.ROI_HEADS.NUM_CLASSES = 11
     predictor = DefaultPredictor(cfg)
@@ -258,7 +409,7 @@ def get_reading(file_image):
     
     #Sort the list based on x-coordinate in order to get proper order or meter reading.
     pred_list = sorted(pred_list, key=lambda x: x[1])
-    
+    print(pred_list)    
     #Get final order of identified classes, and map them to class value.
     final_predictions = [x[0] for x in pred_list]
     pred_class_names = list(map(lambda x: labels[x], final_predictions))
@@ -270,76 +421,32 @@ def get_reading(file_image):
         pred_class_names.insert(5, '.')
         
     #Combine digits and convert them into a float.
+    print(pred_class_names)
     combine_for_float = "".join(pred_class_names)
-    meter_reading = float(combine_for_float)
-    
+    meter_reading = combine_for_float#float()
     return meter_reading
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-def predict(image):
-    """Return top 5 predictions ranked by highest probability.
-
-    Parameters
-    ----------
-    :param image: uploaded image
-    :type image: jpg
-    :rtype: list
-    :return: top 5 predictions ranked by highest probability
-    """
-    # create a ResNet model
-    resnet = models.resnet101(pretrained = True)
-
-    # transform the input image through resizing, normalization
-    transform = transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize(
-            mean = [0.485, 0.456, 0.406],
-            std = [0.229, 0.224, 0.225]
-            )])
-
-    # load the image, pre-process it, and make predictions
-    img = Image.open(image)
-    batch_t = torch.unsqueeze(transform(img), 0)
-    resnet.eval()
-    out = resnet(batch_t)
-
-    with open('imagenet_classes.txt') as f:
-        classes = [line.strip() for line in f.readlines()]
-
-    # return the top 5 predictions ranked by highest probabilities
-    prob = torch.nn.functional.softmax(out, dim = 1)[0] * 100
-    _, indices = torch.sort(out, descending = True)
-    return [(classes[idx], prob[idx].item()) for idx in indices[0][:5]]
+def editOrentation(img):
+    pil_image = PIL.Image.open(img)
+    with open(img, "rb") as img_file:
+        img_file = exif.Image(img_file)
+    try:
+        orientation = str(img_file.get("orientation"))
+    except:
+        orientation = ''
+        print("Orientation error")
+    if orientation == "Orientation.RIGHT_TOP":
+        pil_image = pil_image.rotate(-90)
+    elif orientation == "Orientation.BOTTOM_RIGHT":
+        pil_image = pil_image.rotate(180)
+    elif orientation == "Orientation.LEFT_BOTTOM":
+        pil_image = pil_image.rotate(90)
+    #print("orientation ", str(orientation) )
+    return pil_image
 
 
 # set title of app
-st.title("Simple Image Classification Application")
+st.title("Water Meter Classification")
 st.write("")
 
 # enable users to upload images for the model to make predictions
@@ -349,16 +456,23 @@ file_image = st.camera_input(label = "Or take a pic of meter")
 
 if file_image is not None:
     # display image that user uploaded
-    image = Image.open(file_image)
-    st.image(image, caption = 'Uploaded Image.', use_column_width = True)
-    st.write("")
-    st.write("Just a second ...")
-    st.write(Image.open(file_image))
-    labels = predict(file_image)
-    st.write(get_reading(file_image))
-
-    # print out the top 5 prediction labels with scores
-    for i in labels:
-        st.write("Prediction (index, name)", i[0], ",   Score: ", i[1])
-
-
+    for i in range(6):
+        
+        file_image = './test%s.jpg'%i
+        #file_image = './test5.jpg' 
+        image = editOrentation(file_image)
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! IMAGE", file_image," !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        st.image(image, caption = file_image)
+        st.write("Just a second ...")
+        segmented = segment_input_img(image)    
+        #Prep image and save path.
+        prepped_path = prep_for_ocr(segmented)
+        #st.write("Prediction "+get_reading(image))
+    # file_image = './test5.jpg' 
+    # image = editOrentation(file_image)
+    # st.image(image, caption = 'Uploaded Image.')
+    # st.write("Just a second ...")
+    # segmented = segment_input_img(image)    
+    # #Prep image and save path.
+    # prepped_path = prep_for_ocr(segmented)
+    # #st.write("Prediction "+get_reading(image))

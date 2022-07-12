@@ -2,10 +2,10 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+model_final.pth
+final_segmentation_model
 # C extensions
 *.so
-
 # Distribution / packaging
 .Python
 build/
@@ -127,3 +127,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+test_img_for_ocr.jpg

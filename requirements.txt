@@ -5,10 +5,13 @@ Pillow
 opencv-python-headless
 opendatasets
 pyyaml
+pyftpdlib
+tensorflow==2.8.2
 detectron2==0.3 -f https://dl.fbaipublicfiles.com/detectron2/wheels/cu101/torch1.5/index.html
 git+https://github.com/qubvel/segmentation_models
 pandas
 numpy
+exif
 deskew
 matplotlib
 skimage
