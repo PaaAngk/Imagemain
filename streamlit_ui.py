@@ -73,38 +73,8 @@ def set_png_as_page_bg(png_file):
     return
 set_png_as_page_bg('cat.jpg')
 
-
-# import firebase_admin
-# from firebase_admin import credentials
-# from firebase_admin import storage
-
-# cred = credentials.Certificate('./notional-arc-355706-firebase-adminsdk-wsbrr-30edff4cf4.json')
-# firebase_admin.initialize_app(cred)
-
-# bucket = storage.bucket('gs://notional-arc-355706.appspot.com')
-
-# import pyrebase
-
-# config = {
-#     "apiKey": "AIzaSyDAHWXBKTb-yS9I4Kx4nk11FhAmM5a04Mc",
-#     "authDomain": "notional-arc-355706.firebaseapp.com",
-#     "projectId": "notional-arc-355706",
-#     "databaseURL": "notional-arc-355706.appspot.com",
-#     "storageBucket": "https://notional-arc-355706.appspot.com",
-#     "messagingSenderId": "204353569112",
-#     "appId": "1:204353569112:web:a5d05ddfd037ac1b87e52d",
-#     "measurementId": "G-WGM58XVSZX"
-# }
-
-# firebase = pyrebase.initialize_app(config)
-# storage = firebase.storage()
-# storage.child("./test12.jpg").download("test.jpg")
-# storage.child("images")
-
-
 segmentation_model_file = './final_segmentation_model'
 faster_rcnn_path = './model_final.pth'
-
 
 #Function to resize image.
 def prod_resize_input(img):
@@ -133,33 +103,16 @@ def extract_meter(image_to_be_cropped):
     Function further extracts image such that the meter reading takes up the majority of the image.
     The function finds the edges of the ROI and extracts the portion of the image that contains the entire ROI.
     '''
-    where = np.array(np.where(image_to_be_cropped))
-    x1, y1, z1 = np.amin(where, axis=1)
-    x2, y2, z2 = np.amax(where, axis=1)
-    sub_image = image_to_be_cropped.astype('uint8')[x1:x2, y1:y2]
+    try:   
+        where = np.array(np.where(image_to_be_cropped))
+        x1, y1, z1 = np.amin(where, axis=1)
+        x2, y2, z2 = np.amax(where, axis=1)
+        sub_image = image_to_be_cropped.astype('uint8')[x1:x2, y1:y2]
+    except:
+        st.title("NO METER ON PHOTO")
+        raise SystemExit
+       
     return sub_image
-
-def rotate(image: np.ndarray, angle: float, background: Union[int, Tuple[int, int, int]]) -> np.ndarray:
-    '''
-    This function attempts to rotate meter reading images to make them horizontal.
-    Its arguments are as follows:
-    
-    image - The image to be deskewed (in numpy array format).
-    angle - The current angle of the image, found with the determine_skew function of the deskew library.
-    background - The pixel values of the boarder, either int (default 0) or a tuple.
-    
-    The function returns a numpy array.
-    '''
-    old_width, old_height = image.shape[:2]
-    angle_radian = math.radians(angle)
-    width = abs(np.sin(angle_radian) * old_height) + abs(np.cos(angle_radian) * old_width)
-    height = abs(np.sin(angle_radian) * old_width) + abs(np.cos(angle_radian) * old_height)
-    
-    image_center = tuple(np.array(image.shape[1::-1]) / 2)
-    rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
-    rot_mat[1, 2] += (width - old_width) / 2
-    rot_mat[0, 2] += (height - old_height) / 2
-    return cv2.warpAffine(image, rot_mat, (int(round(height)), int(round(width))), borderValue=background)
 
 def resize_aspect_fit(img, final_size: int):
     '''
@@ -258,9 +211,7 @@ def segment_input_img(input_img):
     #Change type to uint8 and fill in holes.
     mask = mask.astype('uint8')
     mask = scipy.ndimage.morphology.binary_fill_holes(mask[0, :, :, 0]).astype('uint8')
-    #print("Mask: ")
-    #mask
-    #mask = rectangle_mask(mask)
+
     #Resize mask to equal input image size.
     mask = cv2.resize(mask, dsize=dim, interpolation=cv2.INTER_AREA)
     # Taking a matrix of size 5 as the kernel
@@ -268,10 +219,7 @@ def segment_input_img(input_img):
     
     mask = cv2.dilate(mask, kernel, iterations=3)
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN,cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15)))
-    #mask
-    #st.image(mask, caption = 'after .')
-    #mask = rectangle_mask(mask)
-    #st.image(mask, caption = 'before.')
+
     #Create background array.
     bg = np.zeros_like(img, 'uint8')
 
@@ -290,7 +238,7 @@ def segment_input_img(input_img):
     
     st.image(extracted, caption = 'pre rotated.' )
     #rotated = rotate(extracted, angle, (255, 255, 255))
-    rotated = rotated1(extracted, angle, (0, 0, 0))
+    rotated = rotateMain(extracted, angle, (0, 0, 0))
 
     #rotated = pre_rotation(extracted)
     st.image(rotated, caption = 'rotated.')
@@ -309,38 +257,11 @@ def pre_rotation(image):
     print("pre_rotation angle ",angle )
     if angle < -45:
         angle = -(90 + angle)
-    else:
+    if angle > 50 and angle < 80:
         angle = -angle
+    # else:
+    #     angle = -angle
     return angle
-
-
-def rotated1(image: np.ndarray, angle: float, background: Union[int, Tuple[int, int, int]]) -> np.ndarray:
-    old_height, old_width = image.shape[:2]
-    print("old_width", old_width)
-    print("old_height", old_height)
-    print("old_angle", angle)
-    print("correct_skew(image)", correct_skew(image))
-    if old_width<old_height:
-        print("shape")
-        print(rotate(image, 10, (0, 0, 0)).shape[:2])
-        angle = pre_rotation(image)
-        #cur_width = old_width
-        #if rotate(image, 5, (0, 0, 0)).shape[:2][0] >  rotate(image, -5, (0, 0, 0)).shape[:2][0]:
-        
-    else:
-        angle_hist = correct_skew(image)
-        if abs(angle_hist) < abs(angle):
-            angle = angle_hist
-    print("!!!!!!!new angle", angle)
-    angle_radian = math.radians(angle)
-    width = abs(np.sin(angle_radian) * old_width) + abs(np.cos(angle_radian) * old_height)
-    height = abs(np.sin(angle_radian) * old_height) + abs(np.cos(angle_radian) * old_width)
-    
-    image_center = tuple(np.array(image.shape[1::-1]) / 2)
-    rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
-    rot_mat[1, 2] += (width - old_height) / 2
-    rot_mat[0, 2] += (height - old_width) / 2
-    return cv2.warpAffine(image, rot_mat, (int(round(height)), int(round(width))), borderValue=background)
 
 def correct_skew(image, delta=1, limit=30):
     def determine_score(arr, angle):
@@ -362,6 +283,37 @@ def correct_skew(image, delta=1, limit=30):
 
     return best_angle
 
+
+def rotateMain(image: np.ndarray, angle: float, background: Union[int, Tuple[int, int, int]]) -> np.ndarray:
+    old_height, old_width = image.shape[:2]
+    print("old_width", old_width)
+    print("old_height", old_height)
+    print("old_angle", angle)
+    print("correct_skew(image)", correct_skew(image))
+    if old_width<old_height:
+        print("shape")
+        print(rotate(image, 10, (0, 0, 0)).shape[:2])
+        angle = pre_rotation(image)
+        angle = angle + correct_skew(rotate(image, angle,(0,0,0)))
+        print("!@!#@$#correct_skew",correct_skew(rotate(image, angle,(0,0,0))))
+        #cur_width = old_width
+        #if rotate(image, 5, (0, 0, 0)).shape[:2][0] >  rotate(image, -5, (0, 0, 0)).shape[:2][0]:  
+    else:
+        angle_hist = correct_skew(image)
+        if abs(angle_hist) < abs(angle):
+            angle = angle_hist
+    print("!!!!!!!new angle", angle)
+    angle_radian = math.radians(angle)
+    width = abs(np.sin(angle_radian) * old_width) + abs(np.cos(angle_radian) * old_height)
+    height = abs(np.sin(angle_radian) * old_height) + abs(np.cos(angle_radian) * old_width)
+    
+    image_center = tuple(np.array(image.shape[1::-1]) / 2)
+    rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
+    rot_mat[1, 2] += (width - old_height) / 2
+    rot_mat[0, 2] += (height - old_width) / 2
+    return cv2.warpAffine(image, rot_mat, (int(round(height)), int(round(width))), borderValue=background)
+
+
 def get_reading(file_image):
     '''
     This is the main function for the pipeline. 
@@ -370,8 +322,10 @@ def get_reading(file_image):
     ries out all the necessary steps to extract a meter reading.
     The output is the reading.
     '''
+    
     #Segment image.
     segmented = segment_input_img(file_image)
+    
     
     #Prep image and save path.
     prepped_path = prep_for_ocr(segmented)
@@ -428,8 +382,11 @@ def get_reading(file_image):
 
 def editOrentation(img):
     pil_image = PIL.Image.open(img)
-    with open(img, "rb") as img_file:
-        img_file = exif.Image(img_file)
+    try:
+        with open(img, "rb") as img_file:
+            img_file = exif.Image(img_file)
+    except:
+        img_file = exif.Image(img)
     try:
         orientation = str(img_file.get("orientation"))
     except:
@@ -441,7 +398,7 @@ def editOrentation(img):
         pil_image = pil_image.rotate(180)
     elif orientation == "Orientation.LEFT_BOTTOM":
         pil_image = pil_image.rotate(90)
-    #print("orientation ", str(orientation) )
+    print("orientation ", str(orientation) )
     return pil_image
 
 
@@ -456,23 +413,23 @@ file_image = st.camera_input(label = "Or take a pic of meter")
 
 if file_image is not None:
     # display image that user uploaded
-    for i in range(6):
-        
-        file_image = './test%s.jpg'%i
-        #file_image = './test5.jpg' 
-        image = editOrentation(file_image)
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! IMAGE", file_image," !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        st.image(image, caption = file_image)
-        st.write("Just a second ...")
-        segmented = segment_input_img(image)    
-        #Prep image and save path.
-        prepped_path = prep_for_ocr(segmented)
-        #st.write("Prediction "+get_reading(image))
+    # for i in range(9):
+    #     file_image = './test%s.jpg'%i
+    #     #file_image = './test5.jpg' 
+    #     image = editOrentation(file_image)
+    #     print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! IMAGE", file_image," !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    #     st.image(image, caption = file_image)
+    #     st.write("Just a second ...")
+    #     segmented = segment_input_img(image)    
+    #     #Prep image and save path.
+    #     prepped_path = prep_for_ocr(segmented)
+    #     #st.write("Prediction "+get_reading(image))
+
     # file_image = './test5.jpg' 
-    # image = editOrentation(file_image)
-    # st.image(image, caption = 'Uploaded Image.')
-    # st.write("Just a second ...")
-    # segmented = segment_input_img(image)    
-    # #Prep image and save path.
-    # prepped_path = prep_for_ocr(segmented)
-    # #st.write("Prediction "+get_reading(image))
+    image = editOrentation(file_image)
+    st.image(image, caption = 'Uploaded Image.')
+    st.write("Just a second ...")
+    segmented = segment_input_img(image)    
+    #Prep image and save path.
+    prepped_path = prep_for_ocr(segmented)
+    #st.write("Prediction "+get_reading(image))
