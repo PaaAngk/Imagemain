@@ -1,11 +1,17 @@
-<!-- # Meters Classification Web App
+# Meters Classification Web App
 
-![image](https://user-images.githubusercontent.com/45563371/102043522-97f85d00-3e0f-11eb-924e-e98b46fa074a.png)
-
-Table of Contents :bookmark_tabs:
-=================
-- [Overview](#overview)
-- [Steps to Use the Application](#steps-to-Use-the-application)
-- [Model Used](#model-used)
-- [Installation](#installation)
-- [Code and Resources Used](#code-and-resources-used) -->
+### Скачать файлы и положить в корень папки:
+```
+https://doc-10-4c-docs.googleusercontent.com/docs/securesc/u7rev108re3ks5c6r4ojv7iupmk7bi95/skpt0ct4cnprap09ims91iht9afjkf4r/1657709850000/16633905671166580408/16633905671166580408/18GAqVbz9jYgp8-RHmi_eYk1yu5zBFDjV?e=download&ax=ACxEAsYn7FVYnRq-Qr7ubzYu3QinI2sG6toJCwDuI2LsWBP5vyF1hhW7Dl8__a1ZX5vljvCCxkThDItq7pKh8XTDPRnG3tfmO2vxQpQIdCTo3Ir0uYFrAhuCkkZ6xgvVtaKDAg6eBphruV63AZpixhe2I319CFLF2BhcYEHN9Z9CLC_BwMRur9k3o4QD7So2tBPfxlB24HlQ9bOT3qAQ2E_sK1MgcYadHVqHkgS2r5oVpWy2NV-xEFd2nRDOBjk3QpKvidCB2-5d187SmxEcwe6-rOdqKNFdc6NICEGtGhukOkE5ogmoOf7axdlij_wu70E8tSYeoK87d4cj5-8ELdLXBIDSg570Q1R6w7J_4uQQg0QFjnTnx7J3ON_QvacAaBEAvvESZcYT2rqzG2-NnwhhSqkcRuVXufGr97yZSMtJHtPtlnjm558j43f2qz8dAPieNhLUizX_4A_ik7OvmgYIIMydQj1osc-NN7OQ3rMgb2t-Y-hvRsSIvZLIN9a0bisXL40V1ipvu_oMLgN3QPunv0M0eCphJ9ZxLjQkf_9j-0Tbj3a6UfS80AvPtpnKzYoaRvhhhhav9w9FkvsRfP047e_D02-BnKeHtKambeZQId2wv6lEO7ec_jtw_Oxntw1FszB1mz6mmfJeF3STZmroaLK2hDrhIwzyjHomKhPI6K3JLeL5E7S3IbM14WOHZfmuikf4IdhwU2nD5bKP9Q6ZxsuuwMjh14Nl-9cKH1akYRhym4CPAcZ3_hDdddBpNFO9RQXm_Iieyj0pcRQZbSuMTLxK&uuid=5f5ff4bc-8ed3-4d21-91f1-6c9702f3e938&authuser=2&nonce=8bnpqt3aton4g&user=16633905671166580408&hash=vt8s10gdjcfqmnn6jngbdsklfg1b9jp7
+```
+```
+https://doc-70-0c-drive-data-export.googleusercontent.com/download/enld3gdk09mrsr7kojukiqc8sf2a0tqo/a2ckv9qb1a34qbfcahp7rrv3smd3tnj3/1657710000000/93b93ea3-d1ac-443a-be52-6ec04d3e48fb/105270039239582805326/ADt3v-OEHq1AZXcxPO1PM8BMJ2S_i5WgMSCwBfwDMKZaR_E91PPQzaljPTfB57iEOZwjCNoBkKLVXxS_V_UktTJFqphxEEP2yvrxqHmWuLFkVQ1_I1Ins6StWvNEB49ymanUFkZe1WGfJaP6xm4AZaYsRmRxPeeaetvlNMwKk8TZo6TMPBOWfxlsCuGSWs3vUna9TPhIKeWA0b50aSrnyJhTo94YVmBW8chw6hkCvferUh6-D-i5bE41b3c_Adfr6kpZsTol8gBfapHCekKLP_ja0L24-vQ2zLSji9_wo0XvpGEwxHOgsC7K4YHvvokfyyaOE6Y7kYnljRfZX7yW9k57lEfgU5j0DA==?authuser=0&nonce=9sm96kod510tu&user=105270039239582805326&hash=sgsg55cj42otkcvfd93fdcm6vseo7r3e
+```
+### Ввести в командную строку:
+```
+pip install -r requirements.txt
+```
+```
+streamlit run .\streamlit_ui.py
+```
+### В открывшемся веб-сайте можно загрузить фотографию счетчика и получить его показание 

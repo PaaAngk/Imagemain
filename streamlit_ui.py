@@ -236,24 +236,22 @@ def segment_input_img(input_img):
     if angle == None:
         angle = 1
     
-    st.image(extracted, caption = 'pre rotated.' )
+    #st.image(extracted, caption = 'pre rotated.' )
     #rotated = rotate(extracted, angle, (255, 255, 255))
     rotated = rotateMain(extracted, angle, (0, 0, 0))
 
     #rotated = pre_rotation(extracted)
-    st.image(rotated, caption = 'rotated.')
+    #st.image(rotated, caption = 'rotated.')
 
     # rotated = rectangle_mask_for_rgb(rotated)
     # st.image(rotated, caption = 'rectangle_mask.')
 
     return rotated
 
-
 def rotateMain(image: np.ndarray, angle: float, background: Union[int, Tuple[int, int, int]]) -> np.ndarray:
     def pre_rotation(image):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
-        # Compute rotated bounding box
         coords = np.column_stack(np.where(thresh > 0))
         angle = cv2.minAreaRect(coords)[-1]
         print("pre_rotation angle ",angle )
@@ -261,9 +259,8 @@ def rotateMain(image: np.ndarray, angle: float, background: Union[int, Tuple[int
             angle = -(90 + angle)
         if angle > 50 and angle < 80:
             angle = -angle
-        # else:
-        #     angle = -angle
         return angle
+
     def correct_skew(image, delta=1, limit=30):
         def determine_score(arr, angle):
             data = inter.rotate(arr, angle, reshape=False, order=0)
@@ -283,9 +280,9 @@ def rotateMain(image: np.ndarray, angle: float, background: Union[int, Tuple[int
         best_angle = angles[scores.index(max(scores))]
 
         return best_angle
+
     old_height, old_width = image.shape[:2]
     print("old_angle", angle)
-    print("correct_skew(image)", correct_skew(image))
     if old_width<old_height:
         print("shape")
         print(rotate(image, 10, (0, 0, 0)).shape[:2])
@@ -326,7 +323,7 @@ def get_reading(file_image):
     #Prep image and save path.
     prepped_path = prep_for_ocr(segmented)
     
-    st.image(prepped_path, caption = 'prepped_path.', use_column_width = True)
+    #st.image(prepped_path, caption = 'prepped_path.', use_column_width = True)
     
     #Class labels.
     labels = ['number', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
@@ -405,27 +402,26 @@ st.write("")
 # enable users to upload images for the model to make predictions
 file_image = st.file_uploader("Upload an image", type = "jpg")
 
-file_image = st.camera_input(label = "Or take a pic of meter")
+#file_image = st.camera_input(label = "Or take a pic of meter")
 
 if file_image is not None:
-    # #file_image.save("saved.jpg")
-    # with open("saved.jpg", 'wb') as f: 
-    #     f.write(file_image.getvalue())
-    # #file_image = './test7.jpg' 
-    # file_image = './saved.jpg'
-    # image = editOrentation(file_image)
-    # st.image(image, caption = 'Uploaded Image.')
-    # st.write("Just a second ...")
-    # st.header("Prediction "+get_reading(image))
-    for i in range(11):
-        file_image = './test%s.jpg'%i
-        #file_image = './test5.jpg' 
-        image = editOrentation(file_image)
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!! IMAGE", file_image," !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        st.image(image, caption = file_image)
-        st.write("Just a second ...")
-        #segmented = segment_input_img(image)    
-        #prepped_path = prep_for_ocr(segmented)
-        st.header("Prediction: "+get_reading(image))
+    #file_image.save("saved.jpg")
+    with open("saved.jpg", 'wb') as f: 
+        f.write(file_image.getvalue())
+    #file_image = './test7.jpg' 
+    file_image = './saved.jpg'
+    image = editOrentation(file_image)
+    st.image(image, caption = 'Uploaded Image.')
+    st.header("Prediction "+get_reading(image))
+    # for i in range(11):
+    #     file_image = './test%s.jpg'%i
+    #     #file_image = './test5.jpg' 
+    #     image = editOrentation(file_image)
+    #     print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!! IMAGE", file_image," !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    #     st.image(image, caption = file_image)
+    #     st.write("Just a second ...")
+    #     #segmented = segment_input_img(image)    
+    #     #prepped_path = prep_for_ocr(segmented)
+    #     st.header("Prediction: "+get_reading(image))
 
     
