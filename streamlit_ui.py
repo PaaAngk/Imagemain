@@ -420,7 +420,7 @@ if file_image is not None:
     #     print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!! IMAGE", file_image," !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
     #     st.image(image, caption = file_image)
     #     st.write("Just a second ...")
-    #     #segmented = segment_input_img(image)    
+    #     #segmented = segment_input_img(image)
     #     #prepped_path = prep_for_ocr(segmented)
     #     st.header("Prediction: "+get_reading(image))
 

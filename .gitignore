@@ -128,3 +128,4 @@ dmypy.json
 # Pyre type checker
 .pyre/
 test_img_for_ocr.jpg
+saved.jpg
