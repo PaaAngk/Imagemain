@@ -12,7 +12,10 @@ https://www.python.org/downloads/
 https://drive.google.com/drive/folders/1HVUwFJqzU5njZcqv_mQMukIkK3gL_IUM?usp=sharing
 ```
 
-### В командной строке перейти в папку и ввести в командную строку (или открыть папку проекта через VS Code):
+### В командной строке перейти в папку и ввести в командную строку (или открыть папку проекта через VS Code). При зависании загрузки TF нажать enter:
+```
+pip install torch
+```
 ```
 pip install -r requirements.txt
 ```
